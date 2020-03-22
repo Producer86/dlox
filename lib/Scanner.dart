@@ -114,7 +114,7 @@ class Scanner {
         } else if (_isAlpha(c)) {
           _identifier();
         } else {
-          lox.error(_line, 'Unexpected character.');
+          lox.error_line(_line, 'Unexpected character.');
         }
         break;
     }
@@ -154,7 +154,7 @@ class Scanner {
     }
     // non-terminated string
     if (_isAtEnd()) {
-      lox.error(_line, 'Non-terminated string.');
+      lox.error_line(_line, 'Non-terminated string.');
       return;
     }
     // consume closing "
