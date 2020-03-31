@@ -6,11 +6,17 @@ void main(List<String> arguments) {
     exit(1);
   }
   var outputDir = arguments.first;
+
   defineAst(outputDir, 'Expr', [
     'Binary   : Expr left, Token op, Expr right',
     'Grouping : Expr expression',
     'Literal  : Object value',
     'Unary    : Token op, Expr right',
+  ]);
+
+  defineAst(outputDir, 'Stmt', [
+    'Expression : Expr expression',
+    'Print      : Expr expression',
   ]);
 }
 
@@ -21,7 +27,7 @@ void defineAst(String outputDir, String baseName, List<String> types) {
   sink.writeln("import 'package:dlox/Token.dart';");
   defineVisitor(sink, baseName, types);
   sink.writeln('abstract class $baseName {');
-  sink.writeln('\tR accept<R>(Visitor<R> visitor);');
+  sink.writeln('\tR accept<R>(${baseName}Visitor<R> visitor);');
   sink.writeln('}');
   sink.writeln();
   for (var type in types) {
@@ -50,7 +56,7 @@ void defineType(
   // Visitor pattern
   sink.writeln();
   sink.writeln('@override');
-  sink.writeln('\tR accept<R>(Visitor<R> visitor) {');
+  sink.writeln('\tR accept<R>(${baseName}Visitor<R> visitor) {');
   sink.writeln('\t\treturn visitor.visit$className$baseName(this);');
   sink.writeln('\t}');
   sink.writeln('}');
@@ -59,7 +65,7 @@ void defineType(
 
 void defineVisitor(IOSink sink, String baseName, List<String> types) {
   sink.writeln();
-  sink.writeln('abstract class Visitor<R> {');
+  sink.writeln('abstract class ${baseName}Visitor<R> {');
   for (var type in types) {
     final typeName = type.split(':')[0].trim();
     sink.writeln(

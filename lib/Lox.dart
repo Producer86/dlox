@@ -39,12 +39,12 @@ void run(String source) {
   final tokens = scanner.scanTokens();
 
   final parser = Parser(tokens);
-  final expression = parser.parse();
+  final statements = parser.parse();
   if (hadError) {
     return;
   }
-  print(AstPrinter().print(expression));
-  interpreter.interpret(expression);
+  // print(AstPrinter().print(expressions));
+  interpreter.interpret(statements);
 }
 
 void error_line(int line, String message) {

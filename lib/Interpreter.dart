@@ -1,16 +1,29 @@
 import 'package:dlox/Expr.dart';
+import 'package:dlox/Stmt.dart';
 import 'package:dlox/Token.dart';
 import 'package:dlox/TokenType.dart';
 import 'package:dlox/Lox.dart' as lox;
 
-class Interpreter extends Visitor<Object> {
-  void interpret(Expr expression) {
+class Interpreter implements ExprVisitor<Object>, StmtVisitor<void> {
+  void interpret(List<Stmt> statements) {
     try {
-      final value = _evaluate(expression);
-      print(_stringify(value));
+      for (var statement in statements) {
+        _execute(statement);
+      }
     } on RuntimeException catch (e) {
       lox.runtimeException(e);
     }
+  }
+
+  @override
+  void visitExpressionStmt(Expression stmt) {
+    _evaluate(stmt.expression);
+  }
+
+  @override
+  void visitPrintStmt(Print stmt) {
+    final value = _evaluate(stmt.expression);
+    print(_stringify(value));
   }
 
   @override
@@ -88,14 +101,18 @@ class Interpreter extends Visitor<Object> {
     return null;
   }
 
+  Object _evaluate(Expr expr) {
+    return expr.accept(this);
+  }
+
+  void _execute(Stmt stmt) {
+    stmt.accept(this);
+  }
+
   bool _isTruthy(Object object) {
     if (object == null) return false;
     if (object is bool) return object;
     return true;
-  }
-
-  Object _evaluate(Expr expr) {
-    return expr.accept(this);
   }
 
   bool _isEqual(Object a, Object b) {

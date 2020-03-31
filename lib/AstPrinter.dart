@@ -2,7 +2,7 @@ import 'package:dlox/Expr.dart';
 // import 'package:dlox/Token.dart';
 // import 'package:dlox/TokenType.dart';
 
-class AstPrinter implements Visitor<String> {
+class AstPrinter implements ExprVisitor<String> {
   String print(Expr expr) {
     return expr.accept(this);
   }

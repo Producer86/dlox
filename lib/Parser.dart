@@ -1,9 +1,16 @@
 import 'package:dlox/Expr.dart';
 import 'package:dlox/Lox.dart' as lox;
+import 'package:dlox/Stmt.dart';
 import 'package:dlox/Token.dart';
 import 'package:dlox/TokenType.dart';
 
 /*
+program -> statement* EOF ;
+
+statement -> exprStmt | printStmt ;
+exprStmt -> expression ";" ;
+printStmt -> "print" expression ";" ;
+
 expression -> equality ;
 equality -> comparison ( ( "!=" | "==" ) comparison )* ;
 comparison -> addition ( ( ">" | ">=" | "<" | "<=" ) addition )* ;
@@ -19,12 +26,29 @@ class Parser {
   final List<Token> _tokens;
   int _current = 0;
 
-  Expr parse() {
-    try {
-      return _expression();
-    } on ParseError {
-      return null;
+  List<Stmt> parse() {
+    final statements = <Stmt>[];
+    while (!_isAtEnd()) {
+      statements.add(_statement());
     }
+    return statements;
+  }
+
+  Stmt _statement() {
+    if (_match([TokenType.Print])) return _printStatement();
+    return _expressionStatement();
+  }
+
+  Stmt _printStatement() {
+    final value = _expression();
+    _consume(TokenType.Semicolon, 'Expected ";" after value.');
+    return Print(value);
+  }
+
+  Stmt _expressionStatement() {
+    final expr = _expression();
+    _consume(TokenType.Semicolon, 'Expected ";" after value.');
+    return Expression(expr);
   }
 
   Expr _expression() {

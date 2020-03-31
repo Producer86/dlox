@@ -1,6 +1,6 @@
 import 'package:dlox/Token.dart';
 
-abstract class Visitor<R> {
+abstract class ExprVisitor<R> {
   R visitBinaryExpr(Binary expr);
   R visitGroupingExpr(Grouping expr);
   R visitLiteralExpr(Literal expr);
@@ -8,7 +8,7 @@ abstract class Visitor<R> {
 }
 
 abstract class Expr {
-  R accept<R>(Visitor<R> visitor);
+  R accept<R>(ExprVisitor<R> visitor);
 }
 
 class Binary implements Expr {
@@ -19,7 +19,7 @@ class Binary implements Expr {
   final Expr right;
 
   @override
-  R accept<R>(Visitor<R> visitor) {
+  R accept<R>(ExprVisitor<R> visitor) {
     return visitor.visitBinaryExpr(this);
   }
 }
@@ -30,7 +30,7 @@ class Grouping implements Expr {
   final Expr expression;
 
   @override
-  R accept<R>(Visitor<R> visitor) {
+  R accept<R>(ExprVisitor<R> visitor) {
     return visitor.visitGroupingExpr(this);
   }
 }
@@ -41,7 +41,7 @@ class Literal implements Expr {
   final Object value;
 
   @override
-  R accept<R>(Visitor<R> visitor) {
+  R accept<R>(ExprVisitor<R> visitor) {
     return visitor.visitLiteralExpr(this);
   }
 }
@@ -53,7 +53,7 @@ class Unary implements Expr {
   final Expr right;
 
   @override
-  R accept<R>(Visitor<R> visitor) {
+  R accept<R>(ExprVisitor<R> visitor) {
     return visitor.visitUnaryExpr(this);
   }
 }
