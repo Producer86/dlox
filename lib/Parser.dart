@@ -1,3 +1,4 @@
+import 'package:dlox/Errors.dart';
 import 'package:dlox/Expr.dart';
 import 'package:dlox/Lox.dart' as lox;
 import 'package:dlox/Stmt.dart';
@@ -5,19 +6,27 @@ import 'package:dlox/Token.dart';
 import 'package:dlox/TokenType.dart';
 
 /*
-program -> statement* EOF ;
+program -> declaration* EOF ;
 
-statement -> exprStmt | printStmt ;
+declaration -> varDecl | statement ;
+
+varDecl -> "var" IDENTIFIER ( "=" expression )? ";" ;
+
+statement -> exprStmt | printStmt | block ;
+
+block -> "{" declaration* "}" ;
+
 exprStmt -> expression ";" ;
 printStmt -> "print" expression ";" ;
 
-expression -> equality ;
+expression -> assignment ;
+assignment -> IDENTIFIER "=" assignment | equality ;
 equality -> comparison ( ( "!=" | "==" ) comparison )* ;
 comparison -> addition ( ( ">" | ">=" | "<" | "<=" ) addition )* ;
 addition -> multiplication ( ( "+" | "-" )  multiplication )* ;
 multiplication -> unary ( ( "*" | "/" ) unary )* ;
 unary -> ( "!" | "-" ) unary | primary ;
-primary -> NUMBER | STRING | "false" | "true" | "nil" | "(" expression ")" ;
+primary -> NUMBER | STRING | "false" | "true" | "nil" | "(" expression ")" | IDENTIFIER ;
 */
 
 class Parser {
@@ -29,30 +38,83 @@ class Parser {
   List<Stmt> parse() {
     final statements = <Stmt>[];
     while (!_isAtEnd()) {
-      statements.add(_statement());
+      statements.add(_declaration());
     }
     return statements;
   }
 
+  Stmt _declaration() {
+    try {
+      if (_match([TokenType.Var])) {
+        return _varDeclaration();
+      }
+      return _statement();
+    } catch (e) {
+      _synchronize();
+      return null;
+    }
+  }
+
+  Stmt _varDeclaration() {
+    final name = _consume(TokenType.Identifier, 'Expected variable name.');
+
+    Expr initializer;
+    if (_match([TokenType.Equal])) {
+      initializer = _expression();
+    }
+
+    _consume(TokenType.Semicolon, 'Expected ";" after variable declaration.');
+    return VarStmt(name, initializer);
+  }
+
   Stmt _statement() {
     if (_match([TokenType.Print])) return _printStatement();
+    if (_match([TokenType.LeftBrace])) return BlockStmt(_block());
     return _expressionStatement();
   }
 
   Stmt _printStatement() {
     final value = _expression();
     _consume(TokenType.Semicolon, 'Expected ";" after value.');
-    return Print(value);
+    return PrintStmt(value);
+  }
+
+  List<Stmt> _block() {
+    final statements = <Stmt>[];
+
+    while (!_check(TokenType.RightBrace) && !_isAtEnd()) {
+      statements.add(_declaration());
+    }
+
+    _consume(TokenType.RightBrace, 'Expected "}" after block.');
+    return statements;
   }
 
   Stmt _expressionStatement() {
     final expr = _expression();
     _consume(TokenType.Semicolon, 'Expected ";" after value.');
-    return Expression(expr);
+    return ExpressionStmt(expr);
   }
 
   Expr _expression() {
-    return _equality();
+    return _assignment();
+  }
+
+  Expr _assignment() {
+    var expr = _equality();
+
+    if (_match([TokenType.Equal])) {
+      final equals = _previous();
+      final value = _assignment();
+
+      if (expr is VariableExpr) {
+        final name = expr.name;
+        return AssignExpr(name, value);
+      }
+
+      _error(equals, 'Invalid assignment target.');
+    }
+    return expr;
   }
 
   Expr _equality() {
@@ -64,7 +126,7 @@ class Parser {
     ])) {
       final op = _previous();
       final right = _comparison();
-      expr = Binary(expr, op, right);
+      expr = BinaryExpr(expr, op, right);
     }
 
     return expr;
@@ -81,7 +143,7 @@ class Parser {
     ])) {
       final op = _previous();
       final right = _addition();
-      expr = Binary(expr, op, right);
+      expr = BinaryExpr(expr, op, right);
     }
 
     return expr;
@@ -96,7 +158,7 @@ class Parser {
     ])) {
       final op = _previous();
       final right = _multiplication();
-      expr = Binary(expr, op, right);
+      expr = BinaryExpr(expr, op, right);
     }
 
     return expr;
@@ -111,7 +173,7 @@ class Parser {
     ])) {
       final op = _previous();
       final right = _unary();
-      expr = Binary(expr, op, right);
+      expr = BinaryExpr(expr, op, right);
     }
 
     return expr;
@@ -124,7 +186,7 @@ class Parser {
     ])) {
       final op = _previous();
       final right = _unary();
-      return Unary(op, right);
+      return UnaryExpr(op, right);
     }
 
     return _primary();
@@ -132,21 +194,26 @@ class Parser {
 
   Expr _primary() {
     if (_match([TokenType.False])) {
-      return Literal(false);
+      return LiteralExpr(false);
     }
     if (_match([TokenType.True])) {
-      return Literal(true);
+      return LiteralExpr(true);
     }
     if (_match([TokenType.Nil])) {
-      return Literal(null);
+      return LiteralExpr(null);
     }
     if (_match([TokenType.Number, TokenType.String])) {
-      return Literal(_previous().literal);
+      return LiteralExpr(_previous().literal);
     }
+
+    if (_match([TokenType.Identifier])) {
+      return VariableExpr(_previous());
+    }
+
     if (_match([TokenType.LeftParen])) {
       final expr = _expression();
       _consume(TokenType.RightParen, 'Expected ")" after expression.');
-      return Grouping(expr);
+      return GroupingExpr(expr);
     }
     throw _error(_peek(), 'Expected expression.');
   }
@@ -224,14 +291,5 @@ class Parser {
       }
       _advance();
     }
-  }
-}
-
-class ParseError implements Exception {
-  final String msg;
-  const ParseError([this.msg]);
-  @override
-  String toString() {
-    return msg ?? 'ParserException';
   }
 }

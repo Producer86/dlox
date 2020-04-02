@@ -8,15 +8,19 @@ void main(List<String> arguments) {
   var outputDir = arguments.first;
 
   defineAst(outputDir, 'Expr', [
+    'Assign   : Token name, Expr value',
     'Binary   : Expr left, Token op, Expr right',
     'Grouping : Expr expression',
     'Literal  : Object value',
     'Unary    : Token op, Expr right',
+    'Variable : Token name',
   ]);
 
   defineAst(outputDir, 'Stmt', [
+    'Block      : List<Stmt> statements',
     'Expression : Expr expression',
     'Print      : Expr expression',
+    'Var        : Token name, Expr initializer',
   ]);
 }
 
@@ -40,14 +44,14 @@ void defineAst(String outputDir, String baseName, List<String> types) {
 
 void defineType(
     IOSink sink, String baseName, String className, String fieldList) {
-  sink.writeln('class $className implements $baseName {');
+  sink.writeln('class $className$baseName implements $baseName {');
   // constructor
   final paramList = <String>[];
   final fields = fieldList.split(', ');
   for (var field in fields) {
     paramList.add('this.' + field.split(' ')[1]);
   }
-  sink.writeln('\t$className(${paramList.join(', ')});');
+  sink.writeln('\t$className$baseName(${paramList.join(', ')});');
   // fields
   sink.writeln();
   for (var field in fields) {
@@ -69,7 +73,7 @@ void defineVisitor(IOSink sink, String baseName, List<String> types) {
   for (var type in types) {
     final typeName = type.split(':')[0].trim();
     sink.writeln(
-        '\tR visit$typeName$baseName($typeName ${baseName.toLowerCase()});');
+        '\tR visit$typeName$baseName($typeName$baseName ${baseName.toLowerCase()});');
   }
   sink.writeln('}');
   sink.writeln();

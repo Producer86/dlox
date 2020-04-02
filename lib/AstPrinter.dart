@@ -8,23 +8,33 @@ class AstPrinter implements ExprVisitor<String> {
   }
 
   @override
-  String visitBinaryExpr(Binary expr) {
+  String visitAssignExpr(AssignExpr expr) {
+    return _parenthesize('= ${expr.name}', [expr.value]);
+  }
+
+  @override
+  String visitBinaryExpr(BinaryExpr expr) {
     return _parenthesize(expr.op.lexeme, [expr.left, expr.right]);
   }
 
   @override
-  String visitGroupingExpr(Grouping expr) {
+  String visitVariableExpr(VariableExpr expr) {
+    return '${expr.name.lexeme}';
+  }
+
+  @override
+  String visitGroupingExpr(GroupingExpr expr) {
     return _parenthesize('group', [expr.expression]);
   }
 
   @override
-  String visitLiteralExpr(Literal expr) {
+  String visitLiteralExpr(LiteralExpr expr) {
     if (expr.value == null) return 'nil';
     return expr.value.toString();
   }
 
   @override
-  String visitUnaryExpr(Unary expr) {
+  String visitUnaryExpr(UnaryExpr expr) {
     return _parenthesize(expr.op.lexeme, [expr.right]);
   }
 
