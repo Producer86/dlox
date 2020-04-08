@@ -41,8 +41,33 @@ class Interpreter implements ExprVisitor<Object>, StmtVisitor<void> {
   }
 
   @override
+  void visitIfStmt(IfStmt stmt) {
+    if (_isTruthy(_evaluate(stmt.condition))) {
+      _execute(stmt.thenBranch);
+    } else if (stmt.elseBranch != null) {
+      _execute(stmt.thenBranch);
+    }
+  }
+
+  @override
+  void visitBlockStmt(BlockStmt stmt) {
+    _executeBlock(stmt.statements, Environment(_environment));
+  }
+
+  @override
   Object visitLiteralExpr(LiteralExpr expr) {
     return expr.value;
+  }
+
+  @override
+  Object visitLogicalExpr(LogicalExpr expr) {
+    final left = _evaluate(expr.left);
+
+    if (expr.op.type == TokenType.Or) {
+      if (_isTruthy(left)) return left;
+    } else if (!_isTruthy(left)) return left;
+
+    return _evaluate(expr.right);
   }
 
   @override
@@ -125,11 +150,6 @@ class Interpreter implements ExprVisitor<Object>, StmtVisitor<void> {
     }
 
     return null;
-  }
-
-  @override
-  void visitBlockStmt(BlockStmt stmt) {
-    _executeBlock(stmt.statements, Environment(_environment));
   }
 
   void _executeBlock(List<Stmt> statements, Environment environment) {

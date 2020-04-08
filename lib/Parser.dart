@@ -12,15 +12,16 @@ declaration -> varDecl | statement ;
 
 varDecl -> "var" IDENTIFIER ( "=" expression )? ";" ;
 
-statement -> exprStmt | printStmt | block ;
-
-block -> "{" declaration* "}" ;
-
-exprStmt -> expression ";" ;
+statement -> exprStmt | ifStmt | printStmt | block ;
+ifStmt -> "if" "(" expression ")" statement ( "else" statement )? ;
 printStmt -> "print" expression ";" ;
+block -> "{" declaration* "}" ;
+exprStmt -> expression ";" ;
 
 expression -> assignment ;
-assignment -> IDENTIFIER "=" assignment | equality ;
+assignment -> IDENTIFIER "=" assignment | logic_or ;
+logic_or -> logic_and ( "or" logic_and )* ;
+logic_and -> equality ( "and" equality )* ;
 equality -> comparison ( ( "!=" | "==" ) comparison )* ;
 comparison -> addition ( ( ">" | ">=" | "<" | "<=" ) addition )* ;
 addition -> multiplication ( ( "+" | "-" )  multiplication )* ;
@@ -68,9 +69,24 @@ class Parser {
   }
 
   Stmt _statement() {
+    if (_match([TokenType.If])) return _ifStatement();
     if (_match([TokenType.Print])) return _printStatement();
     if (_match([TokenType.LeftBrace])) return BlockStmt(_block());
     return _expressionStatement();
+  }
+
+  Stmt _ifStatement() {
+    _consume(TokenType.LeftParen, 'Expected "(" after "if".');
+    final condition = _expression();
+    _consume(TokenType.RightParen, 'Expected ")" after if condition.');
+
+    final thenBranch = _statement();
+    Stmt elseBrnach;
+    if (_match([TokenType.Else])) {
+      elseBrnach = _statement();
+    }
+
+    return IfStmt(condition, thenBranch, elseBrnach);
   }
 
   Stmt _printStatement() {
@@ -101,7 +117,7 @@ class Parser {
   }
 
   Expr _assignment() {
-    var expr = _equality();
+    var expr = _or();
 
     if (_match([TokenType.Equal])) {
       final equals = _previous();
@@ -114,6 +130,30 @@ class Parser {
 
       _error(equals, 'Invalid assignment target.');
     }
+    return expr;
+  }
+
+  Expr _or() {
+    var expr = _and();
+
+    while (_match([TokenType.Or])) {
+      final op = _previous();
+      final right = _and();
+      expr = LogicalExpr(expr, op, right);
+    }
+
+    return expr;
+  }
+
+  Expr _and() {
+    var expr = _equality();
+
+    while (_match([TokenType.And])) {
+      final op = _previous();
+      final right = _equality();
+      expr = LogicalExpr(expr, op, right);
+    }
+
     return expr;
   }
 
