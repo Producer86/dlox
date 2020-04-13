@@ -12,8 +12,10 @@ declaration -> varDecl | statement ;
 
 varDecl -> "var" IDENTIFIER ( "=" expression )? ";" ;
 
-statement -> exprStmt | ifStmt | printStmt | block ;
+statement -> exprStmt | forStmt | ifStmt | printStmt | whileStmt | block ;
+forStmt -> "for" "(" ( varDecl | exprStmt | ";" ) expression? ";" expression? ")" statement ;
 ifStmt -> "if" "(" expression ")" statement ( "else" statement )? ;
+whileStmt -> "while" "(" expression ")" statement ;
 printStmt -> "print" expression ";" ;
 block -> "{" declaration* "}" ;
 exprStmt -> expression ";" ;
@@ -69,10 +71,52 @@ class Parser {
   }
 
   Stmt _statement() {
+    if (_match([TokenType.For])) return _forStatement();
     if (_match([TokenType.If])) return _ifStatement();
     if (_match([TokenType.Print])) return _printStatement();
+    if (_match([TokenType.While])) return _whileStatement();
     if (_match([TokenType.LeftBrace])) return BlockStmt(_block());
     return _expressionStatement();
+  }
+
+  Stmt _forStatement() {
+    _consume(TokenType.LeftParen, 'Expected "(" after "for".');
+
+    Stmt initializer;
+    if (_match([TokenType.Semicolon])) {
+    } else if (_match([TokenType.Var])) {
+      initializer = _varDeclaration();
+    } else {
+      initializer = _expressionStatement();
+    }
+
+    Expr condition;
+    if (!_check(TokenType.Semicolon)) {
+      condition = _expression();
+    }
+    _consume(TokenType.Semicolon, 'Expected ";" after loop condition.');
+
+    Expr increment;
+    if (!_check(TokenType.RightParen)) {
+      increment = _expression();
+    }
+
+    _consume(TokenType.RightParen, 'Expected ")" after for clauses.');
+    var body = _statement();
+
+    if (increment != null) {
+      body = BlockStmt([body, ExpressionStmt(increment)]);
+    }
+
+    condition ??= LiteralExpr(true);
+
+    body = WhileStmt(condition, body);
+
+    if (initializer != null) {
+      body = BlockStmt([initializer, body]);
+    }
+
+    return body;
   }
 
   Stmt _ifStatement() {
@@ -93,6 +137,14 @@ class Parser {
     final value = _expression();
     _consume(TokenType.Semicolon, 'Expected ";" after value.');
     return PrintStmt(value);
+  }
+
+  Stmt _whileStatement() {
+    _consume(TokenType.LeftParen, 'Expected "(" after "while".');
+    final condition = _expression();
+    _consume(TokenType.RightParen, 'Expected ")" after condition.');
+    final body = _statement();
+    return WhileStmt(condition, body);
   }
 
   List<Stmt> _block() {

@@ -5,6 +5,7 @@ abstract class StmtVisitor<R> {
   R visitBlockStmt(BlockStmt stmt);
   R visitExpressionStmt(ExpressionStmt stmt);
   R visitIfStmt(IfStmt stmt);
+  R visitWhileStmt(WhileStmt stmt);
   R visitPrintStmt(PrintStmt stmt);
   R visitVarStmt(VarStmt stmt);
 }
@@ -45,6 +46,18 @@ class IfStmt implements Stmt {
   @override
   R accept<R>(StmtVisitor<R> visitor) {
     return visitor.visitIfStmt(this);
+  }
+}
+
+class WhileStmt implements Stmt {
+  WhileStmt(this.condition, this.body);
+
+  final Expr condition;
+  final Stmt body;
+
+  @override
+  R accept<R>(StmtVisitor<R> visitor) {
+    return visitor.visitWhileStmt(this);
   }
 }
 

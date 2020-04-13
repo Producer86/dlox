@@ -50,6 +50,13 @@ class Interpreter implements ExprVisitor<Object>, StmtVisitor<void> {
   }
 
   @override
+  void visitWhileStmt(WhileStmt stmt) {
+    while (_isTruthy(_evaluate(stmt.condition))) {
+      _execute(stmt.body);
+    }
+  }
+
+  @override
   void visitBlockStmt(BlockStmt stmt) {
     _executeBlock(stmt.statements, Environment(_environment));
   }
