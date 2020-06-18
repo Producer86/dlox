@@ -17,6 +17,7 @@ class AstPrinter implements ExprVisitor<String> {
     return _parenthesize(expr.op.lexeme, [expr.left, expr.right]);
   }
 
+  @override
   String visitLogicalExpr(LogicalExpr expr) {
     return _parenthesize(expr.op.lexeme, [expr.left, expr.right]);
   }
@@ -24,6 +25,11 @@ class AstPrinter implements ExprVisitor<String> {
   @override
   String visitVariableExpr(VariableExpr expr) {
     return '${expr.name.lexeme}';
+  }
+
+  @override
+  String visitCallExpr(CallExpr expr) {
+    return _parenthesize('call', [expr.callee, ...expr.arguments]);
   }
 
   @override

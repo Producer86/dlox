@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'dart:convert';
 
-import 'package:dlox/AstPrinter.dart';
+// import 'package:dlox/AstPrinter.dart';
 import 'package:dlox/Errors.dart';
 import 'package:dlox/Interpreter.dart';
 import 'package:dlox/Parser.dart';

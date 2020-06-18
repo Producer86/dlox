@@ -3,6 +3,7 @@ import 'package:dlox/Token.dart';
 abstract class ExprVisitor<R> {
 	R visitAssignExpr(AssignExpr expr);
 	R visitBinaryExpr(BinaryExpr expr);
+	R visitCallExpr(CallExpr expr);
 	R visitGroupingExpr(GroupingExpr expr);
 	R visitLiteralExpr(LiteralExpr expr);
 	R visitLogicalExpr(LogicalExpr expr);
@@ -36,6 +37,19 @@ class BinaryExpr implements Expr {
 @override
 	R accept<R>(ExprVisitor<R> visitor) {
 		return visitor.visitBinaryExpr(this);
+	}
+}
+
+class CallExpr implements Expr {
+	CallExpr(this.callee, this.paren, this.arguments);
+
+	final Expr callee;
+	final Token paren;
+	final List<Expr> arguments;
+
+@override
+	R accept<R>(ExprVisitor<R> visitor) {
+		return visitor.visitCallExpr(this);
 	}
 }
 

@@ -1,0 +1,16 @@
+fun sayHi(first, last) {
+  print "Hello, " + first + " " + last + "!";
+}
+
+sayHi("Dear", "Reader");
+print sayHi;
+
+print clock();
+print clock;
+
+var mario = "Its me!";
+fun printMario() {
+  print "hello " + mario;
+}
+var m = printMario();
+print m;

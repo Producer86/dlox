@@ -1,13 +1,23 @@
 import 'package:dlox/Environment.dart';
 import 'package:dlox/Errors.dart';
 import 'package:dlox/Expr.dart';
+import 'package:dlox/LoxCallable.dart';
+import 'package:dlox/LoxFunction.dart';
+import 'package:dlox/Return.dart';
 import 'package:dlox/Stmt.dart';
 import 'package:dlox/Token.dart';
 import 'package:dlox/TokenType.dart';
 import 'package:dlox/Lox.dart' as lox;
 
 class Interpreter implements ExprVisitor<Object>, StmtVisitor<void> {
-  var _environment = Environment();
+  final Environment globals = Environment();
+  Environment _environment;
+
+  Interpreter() {
+    _environment = globals;
+
+    globals.define('clock', ClockFn());
+  }
 
   void interpret(List<Stmt> statements) {
     try {
@@ -25,9 +35,22 @@ class Interpreter implements ExprVisitor<Object>, StmtVisitor<void> {
   }
 
   @override
+  void visitFunctionStmt(FunctionStmt stmt) {
+    final function = LoxFunction(declaration: stmt, closure: _environment);
+    _environment.define(stmt.name.lexeme, function);
+  }
+
+  @override
   void visitPrintStmt(PrintStmt stmt) {
     final value = _evaluate(stmt.expression);
     print(_stringify(value));
+  }
+
+  @override
+  void visitReturnStmt(ReturnStmt stmt) {
+    Object value;
+    if (stmt.value != null) value = _evaluate(stmt.value);
+    throw Return(value);
   }
 
   @override
@@ -58,7 +81,7 @@ class Interpreter implements ExprVisitor<Object>, StmtVisitor<void> {
 
   @override
   void visitBlockStmt(BlockStmt stmt) {
-    _executeBlock(stmt.statements, Environment(_environment));
+    executeBlock(stmt.statements, Environment(_environment));
   }
 
   @override
@@ -159,7 +182,31 @@ class Interpreter implements ExprVisitor<Object>, StmtVisitor<void> {
     return null;
   }
 
-  void _executeBlock(List<Stmt> statements, Environment environment) {
+  @override
+  Object visitCallExpr(CallExpr expr) {
+    var callee = _evaluate(expr.callee);
+
+    final arguments = <Object>[];
+    for (var argument in expr.arguments) {
+      arguments.add(_evaluate(argument));
+    }
+
+    if (!(callee is LoxCallable)) {
+      throw RuntimeException(
+          expr.paren, 'Can only call functions and classes.');
+    }
+
+    final function = callee as LoxCallable;
+
+    if (arguments.length != function.arity) {
+      throw RuntimeException(expr.paren,
+          'Expected ${function.arity} arguments but got ${arguments.length}.');
+    }
+
+    return function.call(this, arguments);
+  }
+
+  void executeBlock(List<Stmt> statements, Environment environment) {
     final previous = _environment;
     try {
       _environment = environment;
@@ -213,5 +260,20 @@ class Interpreter implements ExprVisitor<Object>, StmtVisitor<void> {
     if (a is! double || b is! double) {
       throw RuntimeException(op, 'Operands must be numbers.');
     }
+  }
+}
+
+class ClockFn implements LoxCallable {
+  @override
+  int get arity => 0;
+
+  @override
+  Object call(Interpreter interpreter, List<Object> arguments) {
+    return DateTime.now().millisecondsSinceEpoch / 1000;
+  }
+
+  @override
+  String toString() {
+    return '<native fn>';
   }
 }

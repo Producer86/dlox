@@ -8,11 +8,16 @@ import 'package:dlox/TokenType.dart';
 /*
 program -> declaration* EOF ;
 
-declaration -> varDecl | statement ;
+declaration -> varDecl | funDecl | statement ;
 
 varDecl -> "var" IDENTIFIER ( "=" expression )? ";" ;
 
-statement -> exprStmt | forStmt | ifStmt | printStmt | whileStmt | block ;
+funDecl -> "fun" function ;
+function -> IDENTIFIER "(" parameters? ")" block ;
+parameters -> IDENTIFIER ( "," IDENTIFIER )* ;
+
+statement -> exprStmt | forStmt | ifStmt | printStmt | returnStmt | whileStmt | block ;
+returnStmt -> "return" expression? ";" ;
 forStmt -> "for" "(" ( varDecl | exprStmt | ";" ) expression? ";" expression? ")" statement ;
 ifStmt -> "if" "(" expression ")" statement ( "else" statement )? ;
 whileStmt -> "while" "(" expression ")" statement ;
@@ -28,7 +33,9 @@ equality -> comparison ( ( "!=" | "==" ) comparison )* ;
 comparison -> addition ( ( ">" | ">=" | "<" | "<=" ) addition )* ;
 addition -> multiplication ( ( "+" | "-" )  multiplication )* ;
 multiplication -> unary ( ( "*" | "/" ) unary )* ;
-unary -> ( "!" | "-" ) unary | primary ;
+unary -> ( "!" | "-" ) unary | call ;
+call -> primary ( "(" arguments? ")" )* ;
+arguments -> expression ( "," expression )* ;
 primary -> NUMBER | STRING | "false" | "true" | "nil" | "(" expression ")" | IDENTIFIER ;
 */
 
@@ -51,6 +58,9 @@ class Parser {
       if (_match([TokenType.Var])) {
         return _varDeclaration();
       }
+      if (_match([TokenType.Fun])) {
+        return _function('function');
+      }
       return _statement();
     } catch (e) {
       _synchronize();
@@ -70,10 +80,32 @@ class Parser {
     return VarStmt(name, initializer);
   }
 
+  Stmt _function(String kind) {
+    final name = _consume(TokenType.Identifier, 'Expected $kind name.');
+    _consume(TokenType.LeftParen, 'Expected "(" after $kind name.');
+    final parameters = <Token>[];
+    if (!_check(TokenType.RightParen)) {
+      do {
+        if (parameters.length >= 255) {
+          _error(_peek(), 'Cannot have more than 255 parameters.');
+        }
+
+        parameters
+            .add(_consume(TokenType.Identifier, 'Expected parameter name.'));
+      } while (_match([TokenType.Comma]));
+    }
+    _consume(TokenType.RightParen, 'Expected ")" after parameters.');
+
+    _consume(TokenType.LeftBrace, 'Expected "{" before $kind body.');
+    final body = _block();
+    return FunctionStmt(name, parameters, body);
+  }
+
   Stmt _statement() {
     if (_match([TokenType.For])) return _forStatement();
     if (_match([TokenType.If])) return _ifStatement();
     if (_match([TokenType.Print])) return _printStatement();
+    if (_match([TokenType.Return])) return _returnStatement();
     if (_match([TokenType.While])) return _whileStatement();
     if (_match([TokenType.LeftBrace])) return BlockStmt(_block());
     return _expressionStatement();
@@ -137,6 +169,16 @@ class Parser {
     final value = _expression();
     _consume(TokenType.Semicolon, 'Expected ";" after value.');
     return PrintStmt(value);
+  }
+
+  Stmt _returnStatement() {
+    final keyword = _previous();
+    Expr value;
+    if (!_check(TokenType.Semicolon)) {
+      value = _expression();
+    }
+    _consume(TokenType.Semicolon, 'Expected ";" after return value.');
+    return ReturnStmt(keyword, value);
   }
 
   Stmt _whileStatement() {
@@ -281,7 +323,38 @@ class Parser {
       return UnaryExpr(op, right);
     }
 
-    return _primary();
+    return _call();
+  }
+
+  Expr _call() {
+    var expr = _primary();
+
+    while (true) {
+      if (_match([TokenType.LeftParen])) {
+        expr = _finishCall(expr);
+      } else {
+        break;
+      }
+    }
+
+    return expr;
+  }
+
+  Expr _finishCall(Expr callee) {
+    final arguments = <Expr>[];
+    if (!_check(TokenType.RightParen)) {
+      do {
+        if (arguments.length >= 255) {
+          _error(_peek(), 'Cannot have more than 255 arguments.');
+        }
+        arguments.add(_expression());
+      } while (_match([TokenType.Comma]));
+    }
+
+    final paren =
+        _consume(TokenType.RightParen, 'Expected ")" after arguments.');
+
+    return CallExpr(callee, paren, arguments);
   }
 
   Expr _primary() {
