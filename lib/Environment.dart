@@ -2,18 +2,18 @@ import 'package:dlox/Errors.dart';
 import 'package:dlox/Token.dart';
 
 class Environment {
-  final Map<String, Object> _values = {};
+  final Map<String, Object> values = {};
   final Environment enclosing;
 
   Environment([this.enclosing]);
 
   void define(String name, Object value) {
-    _values[name] = value;
+    values[name] = value;
   }
 
   Object operator [](Token name) {
-    if (_values.containsKey(name.lexeme)) {
-      return _values[name.lexeme];
+    if (values.containsKey(name.lexeme)) {
+      return values[name.lexeme];
     }
 
     if (enclosing != null) {
@@ -24,8 +24,8 @@ class Environment {
   }
 
   void assign(Token name, Object value) {
-    if (_values.containsKey(name.lexeme)) {
-      _values[name.lexeme] = value;
+    if (values.containsKey(name.lexeme)) {
+      values[name.lexeme] = value;
       return;
     }
 
@@ -35,5 +35,21 @@ class Environment {
     }
 
     throw RuntimeException(name, 'Undefined variable ${name.lexeme}.');
+  }
+
+  Object getAt(int distance, String name) {
+    return ancestor(distance).values[name];
+  }
+
+  void assignAt(int distance, Token name, Object value) {
+    ancestor(distance).values[name.lexeme] = value;
+  }
+
+  Environment ancestor(int distance) {
+    var environment = this;
+    for (var i = 0; i < distance; i++) {
+      environment = environment.enclosing;
+    }
+    return environment;
   }
 }

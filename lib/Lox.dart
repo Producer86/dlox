@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'package:dlox/Errors.dart';
 import 'package:dlox/Interpreter.dart';
 import 'package:dlox/Parser.dart';
+import 'package:dlox/Resolver.dart';
 import 'package:dlox/Scanner.dart';
 import 'package:dlox/Token.dart';
 import 'package:dlox/TokenType.dart';
@@ -44,6 +45,13 @@ void run(String source) {
   if (hadError) {
     return;
   }
+
+  final resolver = Resolver(interpreter);
+  resolver.resolve(statements);
+  if (hadError) {
+    return;
+  }
+
   // print(AstPrinter().print(expressions));
   interpreter.interpret(statements);
 }

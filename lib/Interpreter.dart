@@ -1,3 +1,5 @@
+import 'dart:collection';
+
 import 'package:dlox/Environment.dart';
 import 'package:dlox/Errors.dart';
 import 'package:dlox/Expr.dart';
@@ -11,6 +13,7 @@ import 'package:dlox/Lox.dart' as lox;
 
 class Interpreter implements ExprVisitor<Object>, StmtVisitor<void> {
   final Environment globals = Environment();
+  final HashMap _locals = HashMap<Expr, int>();
   Environment _environment;
 
   Interpreter() {
@@ -102,7 +105,7 @@ class Interpreter implements ExprVisitor<Object>, StmtVisitor<void> {
 
   @override
   Object visitVariableExpr(VariableExpr expr) {
-    return _environment[expr.name];
+    return _lookUpVariable(expr.name, expr);
   }
 
   @override
@@ -130,7 +133,14 @@ class Interpreter implements ExprVisitor<Object>, StmtVisitor<void> {
   @override
   Object visitAssignExpr(AssignExpr expr) {
     final value = _evaluate(expr.value);
-    _environment.assign(expr.name, value);
+
+    final distance = _locals[expr];
+    if (distance != null) {
+      _environment.assignAt(distance, expr.name, value);
+    } else {
+      globals.assign(expr.name, value);
+    }
+
     return value;
   }
 
@@ -259,6 +269,19 @@ class Interpreter implements ExprVisitor<Object>, StmtVisitor<void> {
   void _checkNumberOperands(Token op, Object a, Object b) {
     if (a is! double || b is! double) {
       throw RuntimeException(op, 'Operands must be numbers.');
+    }
+  }
+
+  void resolve(Expr expr, int depth) {
+    _locals[expr] = depth;
+  }
+
+  Object _lookUpVariable(Token name, Expr expr) {
+    final distance = _locals[expr];
+    if (distance != null) {
+      return _environment.getAt(distance, name.lexeme);
+    } else {
+      return globals[name];
     }
   }
 }
