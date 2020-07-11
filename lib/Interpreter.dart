@@ -4,7 +4,9 @@ import 'package:dlox/Environment.dart';
 import 'package:dlox/Errors.dart';
 import 'package:dlox/Expr.dart';
 import 'package:dlox/LoxCallable.dart';
+import 'package:dlox/LoxClass.dart';
 import 'package:dlox/LoxFunction.dart';
+import 'package:dlox/LoxInstance.dart';
 import 'package:dlox/Return.dart';
 import 'package:dlox/Stmt.dart';
 import 'package:dlox/Token.dart';
@@ -39,7 +41,7 @@ class Interpreter implements ExprVisitor<Object>, StmtVisitor<void> {
 
   @override
   void visitFunctionStmt(FunctionStmt stmt) {
-    final function = LoxFunction(declaration: stmt, closure: _environment);
+    final function = LoxFunction(stmt, _environment);
     _environment.define(stmt.name.lexeme, function);
   }
 
@@ -88,6 +90,21 @@ class Interpreter implements ExprVisitor<Object>, StmtVisitor<void> {
   }
 
   @override
+  void visitClassStmt(ClassStmt stmt) {
+    _environment.define(stmt.name.lexeme, null);
+// why?
+    final methods = <String, LoxFunction>{};
+    for (var method in stmt.methods) {
+      final function = LoxFunction(method, _environment,
+          isInitializer: method.name.lexeme == 'init');
+      methods[method.name.lexeme] = function;
+    }
+
+    final loxClass = LoxClass(stmt.name.lexeme, methods);
+    _environment.assign(stmt.name, loxClass);
+  }
+
+  @override
   Object visitLiteralExpr(LiteralExpr expr) {
     return expr.value;
   }
@@ -101,6 +118,25 @@ class Interpreter implements ExprVisitor<Object>, StmtVisitor<void> {
     } else if (!_isTruthy(left)) return left;
 
     return _evaluate(expr.right);
+  }
+
+  @override
+  Object visitSetExpr(SetExpr expr) {
+    final object = _evaluate(expr.object);
+
+    if (!(object is LoxInstance)) {
+      throw RuntimeException(expr.name, 'Only instances have fields');
+    }
+
+    final value = _evaluate(expr.value);
+    (object as LoxInstance).setProp(expr.name, value);
+
+    return value;
+  }
+
+  @override
+  Object visitThisExpr(ThisExpr expr) {
+    return _lookUpVariable(expr.keyword, expr);
   }
 
   @override
@@ -214,6 +250,17 @@ class Interpreter implements ExprVisitor<Object>, StmtVisitor<void> {
     }
 
     return function.call(this, arguments);
+  }
+
+  @override
+  Object visitGetExpr(GetExpr expr) {
+    final object = _evaluate(expr.object);
+
+    if (object is LoxInstance) {
+      return object.getProp(expr.name);
+    }
+
+    throw RuntimeException(expr.name, 'Only instances have properties.');
   }
 
   void executeBlock(List<Stmt> statements, Environment environment) {

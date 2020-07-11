@@ -8,7 +8,9 @@ import 'package:dlox/TokenType.dart';
 /*
 program -> declaration* EOF ;
 
-declaration -> varDecl | funDecl | statement ;
+declaration -> classDecl | varDecl | funDecl | statement ;
+
+classDecl -> "class" IDENTIFIER "{" function* "}" ;
 
 varDecl -> "var" IDENTIFIER ( "=" expression )? ";" ;
 
@@ -26,7 +28,7 @@ block -> "{" declaration* "}" ;
 exprStmt -> expression ";" ;
 
 expression -> assignment ;
-assignment -> IDENTIFIER "=" assignment | logic_or ;
+assignment -> ( call "." )? IDENTIFIER "=" assignment | logic_or ;
 logic_or -> logic_and ( "or" logic_and )* ;
 logic_and -> equality ( "and" equality )* ;
 equality -> comparison ( ( "!=" | "==" ) comparison )* ;
@@ -34,7 +36,7 @@ comparison -> addition ( ( ">" | ">=" | "<" | "<=" ) addition )* ;
 addition -> multiplication ( ( "+" | "-" )  multiplication )* ;
 multiplication -> unary ( ( "*" | "/" ) unary )* ;
 unary -> ( "!" | "-" ) unary | call ;
-call -> primary ( "(" arguments? ")" )* ;
+call -> primary ( "(" arguments? ")" | "." IDENTIFIER )* ;
 arguments -> expression ( "," expression )* ;
 primary -> NUMBER | STRING | "false" | "true" | "nil" | "(" expression ")" | IDENTIFIER ;
 */
@@ -55,6 +57,9 @@ class Parser {
 
   Stmt _declaration() {
     try {
+      if (_match([TokenType.Class])) {
+        return _classDeclaration();
+      }
       if (_match([TokenType.Var])) {
         return _varDeclaration();
       }
@@ -66,6 +71,20 @@ class Parser {
       _synchronize();
       return null;
     }
+  }
+
+  Stmt _classDeclaration() {
+    final name = _consume(TokenType.Identifier, 'Expected class name.');
+    _consume(TokenType.LeftBrace, 'Expected "{" before class body.');
+
+    final methods = <FunctionStmt>[];
+    while (!_check(TokenType.RightBrace)) {
+      methods.add(_function('method'));
+    }
+
+    _consume(TokenType.RightBrace, 'Expected "}" after class body.');
+
+    return ClassStmt(name, methods);
   }
 
   Stmt _varDeclaration() {
@@ -220,6 +239,9 @@ class Parser {
       if (expr is VariableExpr) {
         final name = expr.name;
         return AssignExpr(name, value);
+      } else if (expr is GetExpr) {
+        // the last getter on the left of an = is a setter
+        return SetExpr(expr.object, expr.name, value);
       }
 
       _error(equals, 'Invalid assignment target.');
@@ -332,6 +354,10 @@ class Parser {
     while (true) {
       if (_match([TokenType.LeftParen])) {
         expr = _finishCall(expr);
+      } else if (_match([TokenType.Dot])) {
+        final name =
+            _consume(TokenType.Identifier, 'Expected property name after "."');
+        expr = GetExpr(expr, name);
       } else {
         break;
       }
@@ -370,11 +396,12 @@ class Parser {
     if (_match([TokenType.Number, TokenType.String])) {
       return LiteralExpr(_previous().literal);
     }
-
+    if (_match([TokenType.This])) {
+      return ThisExpr(_previous());
+    }
     if (_match([TokenType.Identifier])) {
       return VariableExpr(_previous());
     }
-
     if (_match([TokenType.LeftParen])) {
       final expr = _expression();
       _consume(TokenType.RightParen, 'Expected ")" after expression.');

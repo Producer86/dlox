@@ -4,9 +4,12 @@ abstract class ExprVisitor<R> {
 	R visitAssignExpr(AssignExpr expr);
 	R visitBinaryExpr(BinaryExpr expr);
 	R visitCallExpr(CallExpr expr);
+	R visitGetExpr(GetExpr expr);
 	R visitGroupingExpr(GroupingExpr expr);
 	R visitLiteralExpr(LiteralExpr expr);
 	R visitLogicalExpr(LogicalExpr expr);
+	R visitSetExpr(SetExpr expr);
+	R visitThisExpr(ThisExpr expr);
 	R visitUnaryExpr(UnaryExpr expr);
 	R visitVariableExpr(VariableExpr expr);
 }
@@ -53,6 +56,18 @@ class CallExpr implements Expr {
 	}
 }
 
+class GetExpr implements Expr {
+	GetExpr(this.object, this.name);
+
+	final Expr object;
+	final Token name;
+
+@override
+	R accept<R>(ExprVisitor<R> visitor) {
+		return visitor.visitGetExpr(this);
+	}
+}
+
 class GroupingExpr implements Expr {
 	GroupingExpr(this.expression);
 
@@ -85,6 +100,30 @@ class LogicalExpr implements Expr {
 @override
 	R accept<R>(ExprVisitor<R> visitor) {
 		return visitor.visitLogicalExpr(this);
+	}
+}
+
+class SetExpr implements Expr {
+	SetExpr(this.object, this.name, this.value);
+
+	final Expr object;
+	final Token name;
+	final Expr value;
+
+@override
+	R accept<R>(ExprVisitor<R> visitor) {
+		return visitor.visitSetExpr(this);
+	}
+}
+
+class ThisExpr implements Expr {
+	ThisExpr(this.keyword);
+
+	final Token keyword;
+
+@override
+	R accept<R>(ExprVisitor<R> visitor) {
+		return visitor.visitThisExpr(this);
 	}
 }
 

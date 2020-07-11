@@ -60,6 +60,24 @@ class AstPrinter implements ExprVisitor<String> {
 
     return builder.toString();
   }
+
+  @override
+  String visitGetExpr(GetExpr expr) {
+    // TODO: implement visitGetExpr
+    throw UnimplementedError();
+  }
+
+  @override
+  String visitSetExpr(SetExpr expr) {
+    // TODO: implement visitSetExpr
+    throw UnimplementedError();
+  }
+
+  @override
+  String visitThisExpr(ThisExpr expr) {
+    // TODO: implement visitThisExpr
+    throw UnimplementedError();
+  }
 }
 
 // void main(List<String> args) {

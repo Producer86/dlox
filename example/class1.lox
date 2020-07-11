@@ -1,0 +1,12 @@
+class Puding {
+  serveIn() {
+    print Puding;
+    print "in a bowl";
+  }
+}
+
+var puding = Puding();
+
+print puding;
+
+Puding().serveIn();

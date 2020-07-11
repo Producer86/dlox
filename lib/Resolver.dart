@@ -9,12 +9,17 @@ import 'package:dlox/Lox.dart' as lox;
 enum _FunctionType {
   None,
   Function,
+  Method,
+  Initializer,
 }
+
+enum _ClassType { None, Class }
 
 class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
   final Interpreter _interpreter;
   final _scopes = ListQueue<Map<String, bool>>();
   _FunctionType _currentFunction = _FunctionType.None;
+  _ClassType _currentClass = _ClassType.None;
 
   Resolver(this._interpreter);
 
@@ -23,6 +28,31 @@ class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
     _beginScope();
     resolve(stmt.statements);
     _endScope();
+  }
+
+  @override
+  void visitClassStmt(ClassStmt stmt) {
+    final enclosingClass = _currentClass;
+    _currentClass = _ClassType.Class;
+
+    _declare(stmt.name);
+    _define(stmt.name);
+
+    // we create a new scope where we bind "this" to the instance
+    // we do the binding by literary making a variable in it named "this"
+    // the binding happens in getProp time
+    _beginScope();
+    _scopes.last['this'] = true;
+
+    for (var method in stmt.methods) {
+      final declaration = method.name.lexeme == 'init'
+          ? _FunctionType.Initializer
+          : _FunctionType.Method;
+      _resolveFunction(method, declaration);
+    }
+
+    _endScope();
+    _currentClass = enclosingClass;
   }
 
   @override
@@ -78,7 +108,13 @@ class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
     if (_currentFunction == _FunctionType.None) {
       lox.error_token(stmt.keyword, 'Cannot return from top-level code.');
     }
-    if (stmt.value != null) _resolveExpr(stmt.value);
+    if (stmt.value != null) {
+      if (_currentFunction == _FunctionType.Initializer) {
+        lox.error_token(
+            stmt.keyword, 'Cannot return a value from an initializer.');
+      }
+      _resolveExpr(stmt.value);
+    }
   }
 
   @override
@@ -93,6 +129,11 @@ class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
     for (var argument in expr.arguments) {
       _resolveExpr(argument);
     }
+  }
+
+  @override
+  void visitGetExpr(GetExpr expr) {
+    _resolveExpr(expr.object);
   }
 
   void _resolveFunction(FunctionStmt stmt, _FunctionType type) {
@@ -128,6 +169,21 @@ class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
   void visitLogicalExpr(LogicalExpr expr) {
     _resolveExpr(expr.left);
     _resolveExpr(expr.right);
+  }
+
+  @override
+  void visitSetExpr(SetExpr expr) {
+    _resolveExpr(expr.value);
+    _resolveExpr(expr.object);
+  }
+
+  @override
+  void visitThisExpr(ThisExpr expr) {
+    if (_currentClass == _ClassType.None) {
+      lox.error_token(expr.keyword, 'Cannot use "this" outside of a class.');
+      return;
+    }
+    _resolveLocal(expr, expr.keyword);
   }
 
   @override

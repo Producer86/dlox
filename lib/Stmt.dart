@@ -3,6 +3,7 @@ import 'package:dlox/Token.dart';
 
 abstract class StmtVisitor<R> {
   R visitBlockStmt(BlockStmt stmt);
+  R visitClassStmt(ClassStmt stmt);
   R visitExpressionStmt(ExpressionStmt stmt);
   R visitFunctionStmt(FunctionStmt stmt);
   R visitIfStmt(IfStmt stmt);
@@ -24,6 +25,18 @@ class BlockStmt implements Stmt {
   @override
   R accept<R>(StmtVisitor<R> visitor) {
     return visitor.visitBlockStmt(this);
+  }
+}
+
+class ClassStmt implements Stmt {
+  ClassStmt(this.name, this.methods);
+
+  final Token name;
+  final List<FunctionStmt> methods;
+
+  @override
+  R accept<R>(StmtVisitor<R> visitor) {
+    return visitor.visitClassStmt(this);
   }
 }
 

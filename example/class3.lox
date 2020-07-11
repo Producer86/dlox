@@ -1,0 +1,11 @@
+class Thing {
+  init(start) {
+    this.name = "name";
+    this.data = start;
+  }
+}
+
+var thing = Thing(5);
+
+print thing.name;
+print thing.data;

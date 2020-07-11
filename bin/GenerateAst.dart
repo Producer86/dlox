@@ -11,15 +11,19 @@ void main(List<String> arguments) {
     'Assign   : Token name, Expr value',
     'Binary   : Expr left, Token op, Expr right',
     'Call     : Expr callee, Token paren, List<Expr> arguments',
+    'Get      : Expr object, Token name',
     'Grouping : Expr expression',
     'Literal  : Object value',
     'Logical  : Expr left, Token op, Expr right',
+    'Set      : Expr object, Token name, Expr value',
+    'This     : Token keyword',
     'Unary    : Token op, Expr right',
     'Variable : Token name',
   ]);
 
   defineAst(outputDir, 'Stmt', [
     'Block      : List<Stmt> statements',
+    'Class      : Token name, List<FunctionStmt> methods',
     'Expression : Expr expression',
     'Function   : Token name, List<Token> params, List<Stmt> body',
     'If         : Expr condition, Stmt thenBranch, Stmt elseBranch',
