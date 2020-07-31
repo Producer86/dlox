@@ -13,7 +13,11 @@ enum _FunctionType {
   Initializer,
 }
 
-enum _ClassType { None, Class }
+enum _ClassType {
+  None,
+  Class,
+  Subclass,
+}
 
 class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
   final Interpreter _interpreter;
@@ -38,6 +42,20 @@ class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
     _declare(stmt.name);
     _define(stmt.name);
 
+    if (stmt.superclass != null) {
+      if (stmt.superclass.name.lexeme == stmt.name.lexeme) {
+        lox.error_token(
+            stmt.superclass.name, 'A class cannot inherit from itself.');
+        return;
+      }
+      _currentClass = _ClassType.Subclass;
+      _resolveExpr(stmt.superclass);
+
+      // similar trick as with "this"
+      _beginScope();
+      _scopes.last['super'] = true;
+    }
+
     // we create a new scope where we bind "this" to the instance
     // we do the binding by literary making a variable in it named "this"
     // the binding happens in getProp time
@@ -53,6 +71,10 @@ class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
 
     _endScope();
     _currentClass = enclosingClass;
+
+    if (stmt.superclass != null) {
+      _endScope();
+    }
   }
 
   @override
@@ -175,6 +197,17 @@ class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
   void visitSetExpr(SetExpr expr) {
     _resolveExpr(expr.value);
     _resolveExpr(expr.object);
+  }
+
+  @override
+  void visitSuperExpr(SuperExpr expr) {
+    if (_currentClass == _ClassType.None) {
+      lox.error_token(expr.keyword, 'Cannot use "super" outside of a class.');
+    } else if (_currentClass != _ClassType.Subclass) {
+      lox.error_token(
+          expr.keyword, 'Cannot use "super" in a class with no superclass.');
+    }
+    _resolveLocal(expr, expr.keyword);
   }
 
   @override

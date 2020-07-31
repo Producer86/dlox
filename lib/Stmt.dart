@@ -29,9 +29,10 @@ class BlockStmt implements Stmt {
 }
 
 class ClassStmt implements Stmt {
-  ClassStmt(this.name, this.methods);
+  ClassStmt(this.name, this.superclass, this.methods);
 
   final Token name;
+  final VariableExpr superclass;
   final List<FunctionStmt> methods;
 
   @override

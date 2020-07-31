@@ -10,7 +10,7 @@ program -> declaration* EOF ;
 
 declaration -> classDecl | varDecl | funDecl | statement ;
 
-classDecl -> "class" IDENTIFIER "{" function* "}" ;
+classDecl -> "class" IDENTIFIER ( "<" IDENTIFIER )? "{" function* "}" ;
 
 varDecl -> "var" IDENTIFIER ( "=" expression )? ";" ;
 
@@ -38,7 +38,7 @@ multiplication -> unary ( ( "*" | "/" ) unary )* ;
 unary -> ( "!" | "-" ) unary | call ;
 call -> primary ( "(" arguments? ")" | "." IDENTIFIER )* ;
 arguments -> expression ( "," expression )* ;
-primary -> NUMBER | STRING | "false" | "true" | "nil" | "(" expression ")" | IDENTIFIER ;
+primary -> NUMBER | STRING | "false" | "true" | "nil" | "(" expression ")" | IDENTIFIER | "super" "." IDENTIFIER ;
 */
 
 class Parser {
@@ -75,6 +75,13 @@ class Parser {
 
   Stmt _classDeclaration() {
     final name = _consume(TokenType.Identifier, 'Expected class name.');
+
+    var superclass;
+    if (_match([TokenType.Less])) {
+      _consume(TokenType.Identifier, 'Expected superclass name.');
+      superclass = VariableExpr(_previous());
+    }
+
     _consume(TokenType.LeftBrace, 'Expected "{" before class body.');
 
     final methods = <FunctionStmt>[];
@@ -84,7 +91,7 @@ class Parser {
 
     _consume(TokenType.RightBrace, 'Expected "}" after class body.');
 
-    return ClassStmt(name, methods);
+    return ClassStmt(name, superclass, methods);
   }
 
   Stmt _varDeclaration() {
@@ -395,6 +402,13 @@ class Parser {
     }
     if (_match([TokenType.Number, TokenType.String])) {
       return LiteralExpr(_previous().literal);
+    }
+    if (_match([TokenType.Super])) {
+      final keyword = _previous();
+      _consume(TokenType.Dot, 'Expected "." after "super".');
+      final method =
+          _consume(TokenType.Identifier, 'Expected superclass method name.');
+      return SuperExpr(keyword, method);
     }
     if (_match([TokenType.This])) {
       return ThisExpr(_previous());

@@ -1,4 +1,5 @@
 import 'dart:collection';
+import 'dart:math';
 
 import 'package:dlox/Environment.dart';
 import 'package:dlox/Errors.dart';
@@ -91,8 +92,23 @@ class Interpreter implements ExprVisitor<Object>, StmtVisitor<void> {
 
   @override
   void visitClassStmt(ClassStmt stmt) {
+    var superclass;
+    if (stmt.superclass != null) {
+      superclass = _evaluate(stmt.superclass);
+      if (!(superclass is LoxClass)) {
+        throw RuntimeException(
+            stmt.superclass.name, 'Superclass must be a class.');
+      }
+    }
+
+    // why split this?
     _environment.define(stmt.name.lexeme, null);
-// why?
+
+    if (stmt.superclass != null) {
+      _environment = Environment(_environment);
+      _environment.define('super', superclass);
+    }
+
     final methods = <String, LoxFunction>{};
     for (var method in stmt.methods) {
       final function = LoxFunction(method, _environment,
@@ -100,7 +116,12 @@ class Interpreter implements ExprVisitor<Object>, StmtVisitor<void> {
       methods[method.name.lexeme] = function;
     }
 
-    final loxClass = LoxClass(stmt.name.lexeme, methods);
+    final loxClass = LoxClass(stmt.name.lexeme, superclass, methods);
+
+    if (superclass != null) {
+      _environment = _environment.enclosing;
+    }
+
     _environment.assign(stmt.name, loxClass);
   }
 
@@ -132,6 +153,20 @@ class Interpreter implements ExprVisitor<Object>, StmtVisitor<void> {
     (object as LoxInstance).setProp(expr.name, value);
 
     return value;
+  }
+
+  @override
+  Object visitSuperExpr(SuperExpr expr) {
+    final distance = _locals[expr];
+    final superclass = _environment.getAt(distance, 'super') as LoxClass;
+    // "this" is always one level nearer than "super"'s environment
+    final object = _environment.getAt(distance - 1, 'this');
+    final method = superclass.findMethod(expr.method.lexeme);
+    if (method == null) {
+      throw RuntimeException(
+          expr.method, 'Undefined property ${expr.method.lexeme}.');
+    }
+    return method.bind(object);
   }
 
   @override
